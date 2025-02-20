@@ -45,13 +45,9 @@ function mergeConfig(nextConfig, userConfig) {
   }
 }
 
-export default nextConfig
-module.exports = {
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.resolve.fallback = { window: false };
-    }
-    return config;
-  }
-};
+nextConfig.reactStrictMode = true;
+nextConfig.experimental.appDir = true;
+
+export default nextConfig;
+
 
