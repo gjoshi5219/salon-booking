@@ -2,6 +2,7 @@
 
 
 
+
 import { getFirestore } from "firebase/firestore";
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
@@ -31,4 +32,9 @@ export { db };
 
 // Initialize Firebase
 
-const analytics = getAnalytics(app);
+let analytics = getAnalytics(app);
+
+if (typeof window !== "undefined") {
+  const app = initializeApp(firebaseConfig);
+  analytics = getAnalytics(app);
+}
