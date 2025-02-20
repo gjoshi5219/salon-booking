@@ -1,50 +1,54 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useEffect, useState } from "react";
+import { db } from "@/firebase";
+import { collection, onSnapshot, addDoc } from "firebase/firestore";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 export default function BookingPage() {
-  const [selectedServices, setSelectedServices] = useState<string[]>([])
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [services, setServices] = useState<{ id: string; name: string; price: string; offer?: string }[]>([]);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
 
-  const services = [
-    { id: "haircut", name: "Haircut", price: "₹500" },
-    { id: "coloring", name: "Hair Coloring", price: "₹2000" },
-    { id: "styling", name: "Hair Styling", price: "₹800" },
-    { id: "treatment", name: "Hair Treatment", price: "₹1500" },
-  ]
-
-  const handleServiceChange = (serviceId: string) => {
-    setSelectedServices((prev) =>
-      prev.includes(serviceId) ? prev.filter((id) => id !== serviceId) : [...prev, serviceId]
-    )
-  }
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "services"), (snapshot) => {
+      setServices(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as any)));
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleBooking = async () => {
-    const name = (document.getElementById("name") as HTMLInputElement).value;
-    const phone = (document.getElementById("phone") as HTMLInputElement).value;
-    const date = (document.getElementById("date") as HTMLInputElement).value;
-    const time = (document.getElementById("time") as HTMLInputElement).value;
-
     if (!name || !phone || !date || !time || selectedServices.length === 0) {
       alert("Please fill all details and select at least one service.");
       return;
     }
 
-    const response = await fetch("/api/send-sms", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, phone, date, time, services: selectedServices }),
-    });
+    try {
+      await addDoc(collection(db, "bookings"), {
+        name,
+        phone,
+        date,
+        time,
+        services: selectedServices,
+        createdAt: new Date(),
+      });
 
-    const data = await response.json();
-    if (data.success) {
-      alert("Appointment booked! You will receive an SMS confirmation.");
-    } else {
-      alert("Failed to send SMS. Please try again.");
+      alert("Appointment booked successfully!");
+      setName("");
+      setPhone("");
+      setDate("");
+      setTime("");
+      setSelectedServices([]);
+    } catch (error) {
+      console.error("Booking failed:", error);
+      alert("Failed to book appointment. Please try again.");
     }
   };
 
@@ -52,59 +56,50 @@ export default function BookingPage() {
     <div className="min-h-screen bg-black text-white py-20">
       <div className="container mx-auto px-4">
         <h1 className="text-4xl font-bold text-center mb-12">Book an Appointment</h1>
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto space-y-6">
+
+          {/* Services Selection */}
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
               <CardTitle>Select Services</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid gap-4">
-                {services.map((service) => (
+              {services.length === 0 ? (
+                <p className="text-gray-400 text-center">No services available.</p>
+              ) : (
+                services.map((service) => (
                   <div key={service.id} className="flex items-center space-x-4">
                     <Checkbox
                       id={service.id}
                       checked={selectedServices.includes(service.id)}
-                      onCheckedChange={() => handleServiceChange(service.id)}
+                      onCheckedChange={(checked) =>
+                        setSelectedServices(checked ? [...selectedServices, service.id] : selectedServices.filter(id => id !== service.id))
+                      }
                     />
-                    <Label htmlFor={service.id} className="flex-1">
-                      {service.name}
-                    </Label>
-                    <span className="text-gray-400">{service.price}</span>
+                    <Label htmlFor={service.id}>{service.name}</Label>
+                    <span className="text-gray-400">₹{service.price} {service.offer && `(${service.offer})`}</span>
                   </div>
-                ))}
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input id="name" placeholder="Your name" className="bg-black" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input id="phone" type="tel" placeholder="Your phone number" className="bg-black" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date">Preferred Date</Label>
-                  <Input id="date" type="date" className="bg-black" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="time">Preferred Time</Label>
-                  <Input id="time" type="time" className="bg-black" />
-                </div>
-              </div>
-
-              <Button
-                onClick={handleBooking}
-                className="w-full bg-white text-black hover:bg-blue-500 hover:text-white transition-colors"
-              >
-                Book Appointment
-              </Button>
+                ))
+              )}
             </CardContent>
           </Card>
+
+          {/* Booking Form */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader>
+              <CardTitle>Enter Your Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input placeholder="Phone Number" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+              <Button className="w-full mt-4" onClick={handleBooking}>Confirm Booking</Button>
+            </CardContent>
+          </Card>
+
         </div>
       </div>
     </div>
-  )
+  );
 }
-
-

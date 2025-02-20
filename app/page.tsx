@@ -89,11 +89,14 @@ export default function Home() {
         <section
       className="min-h-[85vh] flex flex-col items-center justify-center bg-gradient-to-b from-black to-gray-900 relative bg-cover bg-center"
       style={{
-        backgroundImage: "url('/image.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        height: "70vh" // Adjust this value as needed
+        background: "linear-gradient(to bottom, black, #080d26)", // Black to Deep Dark Blue
+        height: "70vh"
       }}
+      
+      
+      
+      
+      
       
     >
       {/* Faded Overlay */}

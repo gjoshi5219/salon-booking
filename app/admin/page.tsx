@@ -1,137 +1,118 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useEffect, useState } from "react";
+import { db } from "@/firebase"; // Ensure the correct path
+import { collection, addDoc, deleteDoc, doc, onSnapshot } from "firebase/firestore";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 export default function AdminPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [services, setServices] = useState<{ name: string; price: string; offer?: string }[]>([])
-  const [serviceName, setServiceName] = useState("")
-  const [servicePrice, setServicePrice] = useState("")
-  const [serviceOffer, setServiceOffer] = useState("")
+  const [services, setServices] = useState<{ id: string; name: string; price: string; offer?: string }[]>([]);
+  const [newService, setNewService] = useState({ name: "", price: "", offer: "" });
+  const [password, setPassword] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, "services"), (snapshot) => {
+      setServices(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as any)));
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = () => {
     if (password === "Farhan001") {
-      setIsLoggedIn(true)
-      setError("")
+      setIsAuthenticated(true);
     } else {
-      setError("Invalid password")
+      alert("Incorrect password!");
     }
-  }
+  };
 
-  const handleAddService = () => {
-    if (serviceName && servicePrice) {
-      const newService = {
-        name: serviceName,
-        price: servicePrice,
-        offer: serviceOffer,
-      }
-      setServices([...services, newService])
-      setServiceName("")
-      setServicePrice("")
-      setServiceOffer("")
-    }
-  }
+  const addService = async () => {
+    if (!newService.name || !newService.price) return alert("Name and price are required!");
 
-  const handleRemoveService = (index: number) => {
-    setServices(services.filter((_, i) => i !== index))
-  }
+    await addDoc(collection(db, "services"), {
+      name: newService.name,
+      price: newService.price,
+      offer: newService.offer || null,
+    });
 
-  if (!isLoggedIn) {
+    setNewService({ name: "", price: "", offer: "" });
+  };
+
+  const removeService = async (id: string) => {
+    await deleteDoc(doc(db, "services", id));
+  };
+
+  if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center py-20">
-        <Card className="w-[350px] bg-gray-900 border-gray-800">
-          <CardHeader>
-            <CardTitle>Admin Login</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="bg-black"
-                />
-              </div>
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-              <Button
-                type="submit"
-                className="w-full bg-white text-black hover:bg-blue-500 hover:text-white transition-colors"
-              >
-                Login
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
+        <h1 className="text-2xl mb-4">Admin Login</h1>
+        <Input 
+          type="password" 
+          placeholder="Enter Password" 
+          value={password} 
+          onChange={(e) => setPassword(e.target.value)} 
+        />
+        <Button className="mt-4" onClick={handleLogin}>Login</Button>
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen bg-black text-white py-20">
       <div className="container mx-auto px-4">
-        <h1 className="text-4xl font-bold text-center mb-12">Admin Dashboard</h1>
-        <div className="max-w-2xl mx-auto">
+        <h1 className="text-4xl font-bold text-center mb-12">Admin Panel</h1>
+
+        {/* Add Service Section */}
+        <div className="max-w-2xl mx-auto mb-10">
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
               <CardTitle>Add New Service</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="service-name">Service Name</Label>
-                <Input id="service-name" value={serviceName} onChange={(e) => setServiceName(e.target.value)} placeholder="Enter service name" className="bg-black" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="service-price">Price</Label>
-                <Input id="service-price" value={servicePrice} onChange={(e) => setServicePrice(e.target.value)} placeholder="Enter price" className="bg-black" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="service-offer">Offer (Optional)</Label>
-                <Input id="service-offer" value={serviceOffer} onChange={(e) => setServiceOffer(e.target.value)} placeholder="Enter offer details" className="bg-black" />
-              </div>
-              <Button onClick={handleAddService} className="w-full bg-white text-black hover:bg-blue-500 hover:text-white transition-colors">
-                Add Service
-              </Button>
+              <Input 
+                placeholder="Service Name" 
+                value={newService.name} 
+                onChange={(e) => setNewService({ ...newService, name: e.target.value })} 
+              />
+              <Input 
+                type="number" 
+                placeholder="Price" 
+                value={newService.price} 
+                onChange={(e) => setNewService({ ...newService, price: e.target.value })} 
+              />
+              <Input 
+                placeholder="Offer (Optional)" 
+                value={newService.offer} 
+                onChange={(e) => setNewService({ ...newService, offer: e.target.value })} 
+              />
+              <Button className="w-full" onClick={addService}>Add Service</Button>
             </CardContent>
           </Card>
+        </div>
 
-          <Card className="mt-8 bg-gray-900 border-gray-800">
+        {/* Service List Section */}
+        <div className="max-w-2xl mx-auto">
+          <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
-              <CardTitle>Current Services</CardTitle>
+              <CardTitle>Manage Services</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {services.map((service, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-black rounded-lg">
-                    <div>
-                      <h3 className="font-medium">{service.name}</h3>
-                      <p className="text-sm text-gray-400">₹{service.price}</p>
-                      {service.offer && <p className="text-sm text-green-400">Offer: {service.offer}</p>}
-                    </div>
-                    <Button
-                      onClick={() => handleRemoveService(index)}
-                      variant="destructive"
-                      className="bg-white text-black hover:bg-red-500 hover:text-white transition-colors"
-                    >
-                      Remove
-                    </Button>
+            <CardContent className="space-y-6">
+              {services.length === 0 ? (
+                <p className="text-gray-400 text-center">No services available.</p>
+              ) : (
+                services.map((service) => (
+                  <div key={service.id} className="flex items-center justify-between space-x-4">
+                    <span>{service.name} - ₹{service.price} {service.offer && `(${service.offer})`}</span>
+                    <Button variant="destructive" size="sm" onClick={() => removeService(service.id)}>Remove</Button>
                   </div>
-                ))}
-              </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
     </div>
-  )
+  );
 }
