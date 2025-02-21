@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input"; // Ensure you have this component
+import { Input } from "@/components/ui/input";
+import { motion } from "framer-motion";
 
 export default function BookingPage() {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -41,26 +42,23 @@ export default function BookingPage() {
 
     setLoading(true);
     try {
-      const response = await fetch("/api/send-sms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone, date, time, services: selectedServices }),
+      await addDoc(collection(db, "appointments"), {
+        name,
+        phone,
+        date,
+        time,
+        services: selectedServices,
+        timestamp: new Date(),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        alert("Appointment booked! You will receive an SMS confirmation.");
-        // Reset form after booking
-        setName("");
-        setPhone("");
-        setDate("");
-        setTime("");
-        setSelectedServices([]);
-      } else {
-        alert("Failed to send SMS. Please try again.");
-      }
+      alert("Appointment booked successfully!");
+      setName("");
+      setPhone("");
+      setDate("");
+      setTime("");
+      setSelectedServices([]);
     } catch (error) {
-      alert("Network error. Please try again.");
+      alert("Failed to book appointment. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -70,6 +68,23 @@ export default function BookingPage() {
     <div className="min-h-screen bg-black text-white py-20">
       <div className="container mx-auto px-4">
         <h1 className="text-4xl font-bold text-center mb-12">Book an Appointment</h1>
+        
+        <div className="flex justify-center mb-6">
+          <motion.div
+            initial={{ y: -10 }}
+            animate={{ y: [0, -5, 0] }}
+            transition={{ repeat: Infinity, duration: 1.5 }}
+            className="relative"
+          >
+            <Button
+              onClick={() => window.open("/draft 4_page-0001.jpg", "_blank")}
+              className="bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-red-600"
+            >
+              🎉 Special Offer 🎉
+            </Button>
+          </motion.div>
+        </div>
+
         <div className="max-w-2xl mx-auto space-y-6">
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
@@ -111,4 +126,3 @@ export default function BookingPage() {
     </div>
   );
 }
-
