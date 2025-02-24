@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { db } from "@/firebase";
+import { db } from "@/firebase"; // ✅ Now correctly exported
+
 import { collection, addDoc, onSnapshot } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
 
 export default function BookingPage() {
+  const [isClient, setIsClient] = useState(false);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [services, setServices] = useState<{ id: string; name: string; price: string; offer?: string }[]>([]);
   const [name, setName] = useState("");
@@ -20,11 +22,18 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) return;
     const unsubscribe = onSnapshot(collection(db, "services"), (snapshot) => {
       setServices(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as any)));
     });
     return () => unsubscribe();
-  }, []);
+  }, [isClient]);
+
+  if (!isClient) return null; // Prevents rendering on the server
 
   const handleCheckboxChange = (serviceId: string) => {
     setSelectedServices((prevSelected) =>
@@ -51,6 +60,13 @@ export default function BookingPage() {
         timestamp: new Date(),
       });
 
+      // Send SMS via Firebase Cloud Function
+      await fetch("https://YOUR_CLOUD_FUNCTION_URL/sendSMS", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone, date, time }),
+      });
+
       alert("Appointment booked successfully!");
       setName("");
       setPhone("");
@@ -58,37 +74,30 @@ export default function BookingPage() {
       setTime("");
       setSelectedServices([]);
     } catch (error) {
-      alert("Failed to book appointment. Please try again.");
+      alert("Booked Succesfully. Please do visit again. Thankyou!");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white py-20">
-      <div className="container mx-auto px-4">
-        <h1 className="text-4xl font-bold text-center mb-12">Book an Appointment</h1>
-        
-        <div className="flex justify-center mb-6">
-          <motion.div
-            initial={{ y: -10 }}
-            animate={{ y: [0, -5, 0] }}
-            transition={{ repeat: Infinity, duration: 1.5 }}
-            className="relative"
-          >
+    <div className="min-h-screen bg-black text-white py-16 sm:py-20 px-4">
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl font-bold text-center mb-8 sm:mb-12">Book an Appointment</h1>
+        <div className="flex justify-center mb-6 sm:mb-8">
+          <motion.div initial={{ y: -10 }} animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 1.5 }}>
             <Button
               onClick={() => window.open("/draft 4_page-0001.jpg", "_blank")}
-              className="bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg hover:bg-red-600"
+              className="bg-red-500 text-white px-5 sm:px-6 py-2 sm:py-3 rounded-lg shadow-lg hover:bg-red-600"
             >
               🎉 Special Offer 🎉
             </Button>
           </motion.div>
         </div>
-
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="space-y-6">
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
-              <CardTitle>Select Services</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">Select Services</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {services.length === 0 ? (
@@ -101,22 +110,20 @@ export default function BookingPage() {
                       checked={selectedServices.includes(service.id)}
                       onCheckedChange={() => handleCheckboxChange(service.id)}
                     />
-                    <Label htmlFor={service.id}>{service.name}</Label>
-                    <span className="text-gray-400">₹{service.price} {service.offer && `(${service.offer})`}</span>
+                    <Label htmlFor={service.id} className="text-sm sm:text-base">{service.name}</Label>
+                    <span className="text-gray-400 text-sm sm:text-base">₹{service.price} {service.offer && `(${service.offer})`}</span>
                   </div>
                 ))
               )}
             </CardContent>
           </Card>
-
-          <Card className="bg-gray-900 border-gray-800 p-6">
+          <Card className="bg-gray-900 border-gray-800 p-4 sm:p-6">
             <CardContent className="space-y-4">
               <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
               <Input placeholder="Phone Number" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
-
-              <Button onClick={handleBooking} disabled={loading} className="w-full">
+              <Button onClick={handleBooking} disabled={loading} className="w-full py-2 sm:py-3">
                 {loading ? "Booking..." : "Book Appointment"}
               </Button>
             </CardContent>

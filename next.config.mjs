@@ -1,8 +1,8 @@
-let userConfig = undefined
+let userConfig;
 try {
-  userConfig = await import('./v0-user-next.config')
+  userConfig = await import("./v0-user-next.config");
 } catch (e) {
-  // ignore error
+  userConfig = {}; // Default empty object to avoid errors
 }
 
 /** @type {import('next').NextConfig} */
@@ -21,33 +21,29 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  reactStrictMode: true, // Enable React Strict Mode for better debugging
+  output: "export",
+
+  distDir: "build", // ✅ This will generate a `build/` folder instead of `.next/`
+};
+
+// Merge user config safely
+if (userConfig && typeof userConfig === "object") {
+  mergeConfig(nextConfig, userConfig);
 }
 
-mergeConfig(nextConfig, userConfig)
-
-function mergeConfig(nextConfig, userConfig) {
-  if (!userConfig) {
-    return
-  }
-
-  for (const key in userConfig) {
+function mergeConfig(baseConfig, userConfig) {
+  Object.keys(userConfig).forEach((key) => {
     if (
-      typeof nextConfig[key] === 'object' &&
-      !Array.isArray(nextConfig[key])
+      typeof baseConfig[key] === "object" &&
+      baseConfig[key] !== null &&
+      !Array.isArray(baseConfig[key])
     ) {
-      nextConfig[key] = {
-        ...nextConfig[key],
-        ...userConfig[key],
-      }
+      baseConfig[key] = { ...baseConfig[key], ...userConfig[key] };
     } else {
-      nextConfig[key] = userConfig[key]
+      baseConfig[key] = userConfig[key];
     }
-  }
+  });
 }
-
-nextConfig.reactStrictMode = true;
-nextConfig.experimental.appDir = true;
 
 export default nextConfig;
-
-
